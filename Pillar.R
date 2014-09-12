@@ -29,10 +29,9 @@ LeagueAvgs <- data.frame(1955:2013, tapply(data$Kpct, data$yearID, mean, na.rm =
                          tapply(data$BBpct, data$yearID, mean, na.rm = TRUE),
                          tapply(data$HRpct, data$yearID, mean, na.rm = TRUE))
 colnames(LeagueAvgs) <- c("year", "Kpct", "BBpct", "HRpct")
-LeagueAvgs
 
 ###Add K+, BB+, HR+
-data$K+ <- 1:length(data)
+
 data$Kplus <- 1:length(data$yearID)
 data$BBplus <- 1:length(data$yearID)
 data$HRplus <- 1:length(data$yearID)
@@ -46,7 +45,10 @@ for (i in 1:length(data$yearID)){
     data$HRpct[i] / LeagueAvgs$HRpct[LeagueAvgs$year == data$yearID[i]]) * 100)
 }
 
+data <- data[c("nameFirst", "nameLast", "yearID.x", "age", "PA",
+               "Kplus", "BBplus", "HRplus")]
 
-
-
+###20 pts above/below kevin pillar
+data[data$Kplus >= 98 & data$Kplus <= 138 & data$BBplus >= 6 & data$BBplus <= 46 &
+       data$HRplus >= 47 & data$HRplus <= 87 & complete.cases(data),]
 
