@@ -5,50 +5,68 @@ fielding <- read.csv("./Lahman/fielding.csv")
 master <- read.csv("./Lahman/master.csv")
 batting <- read.csv("./Lahman/batting.csv")
 
-###Merge to include player 
+###Merge to include player position, names
 matting <- merge(master, batting, by = "playerID")
-data <- merge(matting, fielding, by = "playerID")
-data <- data[data$yearID.x >= 1955 & data$POS != "P",]
+data <- merge(matting, fielding[, c("playerID", "POS")], by = "playerID")
+
+##Position players post-1955
+data <- data[data$yearID >= 1955 & data$POS != "P",]
 
 ###Add age, k%, BB%, HR%
-
-data$age <- with(data, yearID.x - birthYear)
+data$name <- paste(data$nameFirst, data$nameLast, sep = " ")
+data$age <- with(data, yearID - birthYear)
 data$PA <- with(data, AB + BB + IBB + HBP + SH + SF, na.rm = TRUE)
 data$Kpct <- with(data, SO/PA, na.rm = TRUE)
 data$BBpct <- with(data, BB/PA, na.rm = TRUE)
 data$HRpct <- with(data, HR/PA, na.rm = TRUE)
 
-
 ###Clean up data frame
-data <- data[,c("nameFirst", "nameLast", "yearID.x", "age", "PA", "SO", "BB", 
+clean <- data[,c("playerID", "name", "yearID", "age", "PA", "SO", "BB", 
                  "HR","Kpct","BBpct", "HRpct")]
-data <- unique(data[data$age == 25,])
 
 ###League Averages
-LeagueAvgs <- data.frame(1955:2013, tapply(data$Kpct, data$yearID, mean, na.rm = TRUE), 
+LeagueAvgs <- data.frame(1955:2013, 
+                         tapply(data$Kpct, data$yearID, mean, na.rm = TRUE), 
                          tapply(data$BBpct, data$yearID, mean, na.rm = TRUE),
                          tapply(data$HRpct, data$yearID, mean, na.rm = TRUE))
 colnames(LeagueAvgs) <- c("year", "Kpct", "BBpct", "HRpct")
 
 ###Add K+, BB+, HR+
 
-data$Kplus <- 1:length(data$yearID)
-data$BBplus <- 1:length(data$yearID)
-data$HRplus <- 1:length(data$yearID)
+final <- clean[c("name", "yearID", "age", "PA", "Kpct", "BBpct", "HRpct")]
+final <- final[!duplicated(final),]
+final$Kplus <- 1:length(final$yearID)
+final$BBplus <- 1:length(final$yearID)
+final$HRplus <- 1:length(final$yearID)
 
-for (i in 1:length(data$yearID)){
-  data$Kplus[i] <- round((
-    data$Kpct[i] / LeagueAvgs$Kpct[LeagueAvgs$year == data$yearID[i]]) * 100)
-  data$BBplus[i] <- round((
-    data$BBpct[i] / LeagueAvgs$BBpct[LeagueAvgs$year == data$yearID[i]]) * 100)
-  data$HRplus[i] <- round((
-    data$HRpct[i] / LeagueAvgs$HRpct[LeagueAvgs$year == data$yearID[i]]) * 100)
+###Create function comp
+
+comp <- function(player, yearsOld, margin){
+  
+  FUNfinal <- final[final$age == yearsOld,]
+  
+  for (i in 1:length(FUNfinal$yearID)){
+    FUNfinal$Kplus[i] <- round((
+      FUNfinal$Kpct[i] / LeagueAvgs$Kpct[LeagueAvgs$year == FUNfinal$yearID[i]]) * 100)
+    FUNfinal$BBplus[i] <- round((
+      FUNfinal$BBpct[i] / LeagueAvgs$BBpct[LeagueAvgs$year == FUNfinal$yearID[i]]) * 100)
+    FUNfinal$HRplus[i] <- round((
+      FUNfinal$HRpct[i] / LeagueAvgs$HRpct[LeagueAvgs$year == FUNfinal$yearID[i]]) * 100)
+  
+  }
+  
+  FUNfinal <- final[c("name", "yearID", "age", "PA", "Kplus", "BBplus", "HRplus")]
+  
+  finalcomp <-  FUNfinal[FUNfinal$Kplus >= margin - FUNfinal$Kplus[FUNfinal$name == player] &
+          FUNfinal$Kplus <= margin + FUNfinal$Kplus[FUNfinal$name == player] &
+          FUNfinal$BBplus >= margin - FUNfinal$BBplus[FUNfinal$name == player] &
+          FUNfinal$BBplus <= margin + FUNfinal$BBplus[FUNfinal$name == player] &
+          FUNfinal$HRplus >= margin - FUNfinal$HRplus[FUNfinal$name == player] &
+          FUNfinal$HRplus <= margin + FUNfinal$HRplus[FUNfinal$name == player] &
+          complete.cases(FUNfinal),]
+    
+ return(finalcomp)
 }
 
-data <- data[c("nameFirst", "nameLast", "yearID.x", "age", "PA",
-               "Kplus", "BBplus", "HRplus")]
-
-###20 pts above/below kevin pillar
-data[data$Kplus >= 98 & data$Kplus <= 138 & data$BBplus >= 6 & data$BBplus <= 46 &
-       data$HRplus >= 47 & data$HRplus <= 87 & complete.cases(data),]
+comp(player = "Jose Bautista", yearsOld = 30, margin = 5)
 

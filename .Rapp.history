@@ -1,0 +1,65 @@
+debug(ls)
+ls()
+setwd("~/Desktop/R/Baseball/Baseballresearch")#
+#
+###Read "Batting", "Master", and fielding tables from Lahman Database#
+fielding <- read.csv("./Lahman/fielding.csv")#
+master <- read.csv("./Lahman/master.csv")#
+batting <- read.csv("./Lahman/batting.csv")#
+#
+###Merge to include player position, names#
+matting <- merge(master, batting, by = "playerID")#
+data <- merge(matting, fielding[, c("playerID", "POS")], by = "playerID")#
+#
+##Position players post-1955#
+data <- data[data$yearID >= 1955 & data$POS != "P",]#
+#
+###Add age, k%, BB%, HR%#
+data$name <- paste(data$nameFirst, data$nameLast, sep = " ")#
+data$age <- with(data, yearID - birthYear)#
+data$PA <- with(data, AB + BB + IBB + HBP + SH + SF, na.rm = TRUE)#
+data$Kpct <- with(data, SO/PA, na.rm = TRUE)#
+data$BBpct <- with(data, BB/PA, na.rm = TRUE)#
+data$HRpct <- with(data, HR/PA, na.rm = TRUE)#
+###Clean up data frame#
+clean <- data[,c("playerID", "name", "yearID", "age", "PA", "SO", "BB", #
+                 "HR","Kpct","BBpct", "HRpct")]#
+#
+###League Averages#
+LeagueAvgs <- data.frame(1955:2013, #
+                         tapply(data$Kpct, data$yearID, mean, na.rm = TRUE), #
+                         tapply(data$BBpct, data$yearID, mean, na.rm = TRUE),#
+                         tapply(data$HRpct, data$yearID, mean, na.rm = TRUE))#
+colnames(LeagueAvgs) <- c("year", "Kpct", "BBpct", "HRpct")#
+#
+###Add K+, BB+, HR+#
+#
+clean$Kplus <- 1:length(clean$yearID)#
+clean$BBplus <- 1:length(clean$yearID)#
+clean$HRplus <- 1:length(clean$yearID)#
+#
+###Create function comp#
+comp <- function(name, age, margin){#
+  clean <- clean[clean$age == age,]#
+  for (i in 1:length(clean$yearID)){#
+  clean$Kplus[i] <- round((#
+    clean$Kpct[i] / LeagueAvgs$Kpct[LeagueAvgs$year == clean$yearID[i]]) * 100)#
+  clean$BBplus[i] <- round((#
+    clean$BBpct[i] / LeagueAvgs$BBpct[LeagueAvgs$year == clean$yearID[i]]) * 100)#
+  clean$HRplus[i] <- round((#
+    clean$HRpct[i] / LeagueAvgs$HRpct[LeagueAvgs$year == clean$yearID[i]]) * 100)#
+  final <- clean[c("name", "yearID", "age", "PA",#
+                  "Kplus", "BBplus", "HRplus")]#
+ finalcomp <-  final[final$Kplus >= margin - final$Kplus[final$name == name] &#
+          final$Kplus <= margin + final$Kplus[final$name == name] &#
+          final$BBplus >= margin - final$BBplus[final$name == name] &#
+          final$BBplus <= margin + final$BBplus[final$name == name] &#
+          final$HRplus >= margin - final$HRplus[final$name == name] &#
+          final$HRplus <= margin + final$HRplus[final$name == name] &#
+          complete.cases(final),]#
+ return(finalcomp)#
+}
+comp("Brett Lawrie", 22, 10)
+x <- 2 + 2
+x
+print(x)
